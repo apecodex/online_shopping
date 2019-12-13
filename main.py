@@ -122,46 +122,60 @@ class RegisterMain():
 
 class FindPassword():
 
-    def __init__(self, username, mail):
-        self.username = username
-        self.mail = mail
+    def __init__(self):
+        self.re_password = re.compile(r'^[0-9a-zA-Z]+[0-9a-zA-Z!@#$%^&*()_+>}<{;\'\]\[\\|]+$')  # 匹配所有
         self.re_mail = re.compile(r'^[0-9a-zA-Z_]{0,19}@[0-9a-zA-Z]{1,13}\.[com,cn,net]{1,3}')  # 匹配邮箱
         self.db = {}
 
-    def checkUsername(self):
-        if self.username.strip() == "":
+    def checkUsername(self, username):
+        if username.strip() == "":
             return "请输入用户名"
-        elif class_sql.searchAloneUsernameDB(self.username) != None:
-            self.db['username'] = self.username
+        elif class_sql.searchAloneUsernameDB(username) != None:
+            self.db['username'] = username
             return None
         else:
             return "用户名不存在!"
 
-    def checkMail(self):
-        if self.mail.strip() == "":
+    def checkMail(self, mail):
+        if mail.strip() == ""   :
             return "请输入邮箱地址"
-        elif self.re_mail.findall(self.mail) == []:  # 如果为空,则匹配失败，说明输入有误
+        elif self.re_mail.findall(mail) == []:  # 如果为空,则匹配失败，说明输入有误
             return "邮箱格式有误!"
-        elif class_sql.searchAloneMailDB(self.mail) != None:
-            self.db["mail"] = self.mail
+        elif class_sql.searchAloneMailDB(mail) != None:
+            self.db["mail"] = mail
             return None
         else:
             return "此邮箱不存在!"
     
     # 用户名和邮箱地址是否是绑定正确
     def IsDate(self):
-        record = class_sql.searchFindPassword(self.username, self.mail)
-        if record != None:
-            return None
+        if self.db == {} or len(self.db) != 2:
+            pass
         else:
-            return "用户名或邮箱有误!"
+            username, mail = self.db['username'], self.db['mail']
+            record = class_sql.searchFindPassword(username, mail)
+            if record != None:
+                return None
+            else:
+                return "用户名或邮箱有误!"
+
+    def checkExists(self, password):
+        if password.strip() == "":
+            return "密码不能为空!"
+        elif len(password) < 6:
+            return "密码太弱!"
+        elif self.re_password.findall(password) == []:  # 如果为空说明匹配失败，输入不符合要求
+            return "字母、数字或特殊符号"
+        else:
+            return None
+
 
 class MainSystem():
 
     root_x, root_y, abs_x, abs_y = 0, 0, 0, 0
 
     def __init__(self):
-        self.default_bg = "gray"
+        self.default_bg = "#800040"
         self.osname = os.name
         self.root = Tk()   # 实例化
         img = ImageTk.PhotoImage(Image.open("images/head.ico"))
@@ -189,16 +203,16 @@ class MainSystem():
         self.welcomelabe = Label(self.root, image=self.welcome_png, bg=self.default_bg)
         self.welcomelabe.place(x=120,y=-35)
         self.button_var = StringVar()
-        self.root.bind('<B1-Motion>', self._on_move)
+        self.root.bind('<B1-Motion>', self._on_move)    # 拖动
         self.root.bind('<ButtonPress-1>', self._on_tap)
 
+    # 拖动功能
     def _on_move(self, event):
         offset_x = event.x_root - self.root_x
         offset_y = event.y_root - self.root_y
 
         if self.w and self.w:
-            geo_str = "%sx%s+%s+%s" % (self.w, self.w,
-                                       self.abs_x + offset_x, self.abs_y + offset_y)
+            geo_str = "%sx%s+%s+%s" % (self.w, self.w, self.abs_x + offset_x, self.abs_y + offset_y)
         else:
             geo_str = "+%s+%s" % (self.abs_x + offset_x, self.abs_y + offset_y)
         self.root.geometry(geo_str)
@@ -255,15 +269,22 @@ class MainSystem():
         re_enter_password = self.register_enter_password_var.get()
         re_mail = self.register_mail_var.get()
         self.tips_re_username = Label(self.register_center_frame, width=35,bg=self.default_bg, font=("Aiarl",8))
-        self.tips_re_username.place(x=0, y=40)
         self.tips_re_age = Label(self.register_center_frame, width=35, bg=self.default_bg, font=("Aiarl",8))
-        self.tips_re_age.place(x=0, y=90)
         self.tips_re_password = Label(self.register_center_frame, width=35, bg=self.default_bg, font=("Aiarl",8))
-        self.tips_re_password.place(x=0, y=185)
         self.tips_re_enter_password = Label(self.register_center_frame, width=35, bg=self.default_bg, font=("Aiarl",8))
-        self.tips_re_enter_password.place(x=0,y=230)
         self.tips_re_mail = Label(self.register_window, width=35, bg=self.default_bg, font=("Aiarl", 8))
-        self.tips_re_mail.place(x=40,y=280)
+        if self.osname == "posix":
+            self.tips_re_username.place(x=0,y=45)
+            self.tips_re_age.place(x=0, y=100)
+            self.tips_re_password.place(x=0, y=200)
+            self.tips_re_enter_password.place(x=0, y=250)
+            self.tips_re_mail.place(x=0, y=305)
+        else:
+            self.tips_re_username.place(x=0, y=40)
+            self.tips_re_age.place(x=0, y=90)
+            self.tips_re_password.place(x=0, y=185)
+            self.tips_re_enter_password.place(x=0,y=230)
+            self.tips_re_mail.place(x=40,y=280)
         class_register = RegisterMain(re_username, re_age, re_gender, re_password, re_enter_password, re_mail)   # 实例化
         username_record = class_register.checkUsername()    # 获取检查后的用户名结果
         age_record = class_register.checkAge()     # 获取检查后的年龄结果
@@ -318,6 +339,10 @@ class MainSystem():
                     self.register_enter_button.config(state=DISABLED)    # 屏蔽提交按钮
 
     def registerCommand(self):
+        try:
+            self.change_password_window.destroy()
+        except AttributeError:
+            pass
         self.register_username_img = PhotoImage(file="images/register_username.png")   # 登录图标
         self.register_password_img = PhotoImage(file="images/register_password.png")
         self.register_age_img = PhotoImage(file="images/age.png")
@@ -373,32 +398,118 @@ class MainSystem():
         self.register_mail_entry = Entry(right_frame, textvariable=self.register_mail_var, font=("Aiarl", 15), relief="solid", bg=self.default_bg, highlightbackground=self.default_bg, width=15)    # 邮箱输入框
         self.register_mail_entry.pack(pady=10)    # x=90, y=253
         self.register_enter_button = Button(self.register_window, image=self.register_ok_img, bg=self.default_bg, relief="flat", command=self.checkInformatsion)
-        self.register_enter_button.pack(side=BOTTOM, pady=10)
+        if self.osname == "posix":
+            self.register_enter_button.pack(side=BOTTOM, pady=2)
+        else:
+            self.register_enter_button.pack(side=BOTTOM, pady=10)
         self.register_window.protocol("WM_DELETE_WINDOW", self.normarlAllButton)
 
     def register(self):
         self.register_button = Button(self.root, image=self.register_photo, bg=self.default_bg, relief="flat",command=self.registerCommand)
         self.register_button.place(x=500,y=350)
 
-    def Timer(self):
-        global times1
-        global times2
-        times1 = 0
-        times2 -= 1
-        if times2 != times1:
-            times1 = times2
-            self.clocks = Label(self.root, text=str(times1)[-3:2], font=28, bg=self.default_bg)
-            self.clocks.configure(text=str(times2)[-3:2])
-            self.clocks.place(x=620,y=30)
-            self.clocks.after(200, self.Timer)
+    def saveChangePassword(self):
+        class_find = FindPassword()
+        record1 = class_find.checkExists(self.change_password_var.get())
+        record2 = class_find.checkExists(self.change_password_entry_var.get())
+        if record1 == None:
+            self.c_password_entry_tips['text'] = ""
+        else:
+            self.c_password_entry_tips['text'] = record1
+        if record2 == None:
+            self.c_password_again_tips['text'] = ""
+        else:
+            self.c_password_again_tips['text'] = record2
+        if record1 == None and record2 == None:
+            if self.change_password_var.get() == self.change_password_entry_var.get():
+                self.userdata['password'] = self.change_password_entry_var.get()
+                print(self.userdata)
+            else:
+                self.c_password_again_tips['text'] = "两次密码不相同!"
+
+    def changePassword(self):
+        self.forget_window.destroy()
+        self.change_password_window = Toplevel()
+        self.change_password_window.title("Change Password")
+        self.change_password_window.wm_attributes("-topmost", 1)   # 置顶这个窗口
+        self.w, self.h = 250, 150
+        self.x, self.y = (self.ws / 2) - (self.w / 2), (self.hs / 2) - (self.h / 2)    # 在屏幕正中弹出
+        self.change_password_window.geometry("%dx%d+%d+%d" % (self.w, self.h, self.x, self.y))
+        self.change_password_window.maxsize("250", "150")
+        self.change_password_window.minsize("250", "150")
+        self.change_password_window.config(bg=self.default_bg)
+        change_password_frame = Frame(self.change_password_window, bg=self.default_bg)
+        change_password_frame.pack(side=TOP)
+        change_password_left_frame = Frame(change_password_frame, bg=self.default_bg)
+        change_password_left_frame.pack(side=LEFT, anchor=N, pady=10)
+        change_password_right_frame = Frame(change_password_frame, bg=self.default_bg)
+        change_password_right_frame.pack(side=TOP, padx=10,pady=10)
+        self.c_password_lable = Label(change_password_left_frame, text="密  码", bg=self.default_bg, font=("Aiarl", 12), relief="solid")
+        self.c_password_lable.pack(anchor=E, pady=3)
+        self.c_password_entry_lable = Label(change_password_left_frame, text="确认密码", bg=self.default_bg, font=("Aiarl", 12), relief="solid")
+        self.c_password_entry_lable.pack(pady=20)
+        self.change_password_var = StringVar()
+        self.change_password_entry_var = StringVar()
+        self.c_password_entry = Entry(change_password_right_frame,textvariable=self.change_password_var, show="*", font=("Aiarl", 12), relief="solid", width=12, bg=self.default_bg)
+        self.c_password_entry.pack()
+        self.c_password_entry_tips = Label(change_password_right_frame, font=("Aiarl", 10), relief="flat", bg=self.default_bg)
+        self.c_password_entry_tips.pack()
+        self.c_password_again_entry = Entry(change_password_right_frame,textvariable=self.change_password_entry_var, show="*", font=("Aiarl", 12), relief="solid", width=12, bg=self.default_bg)
+        self.c_password_again_entry.pack()
+        self.c_password_again_tips = Label(change_password_right_frame, font=("Aiarl", 10), relief="flat", bg=self.default_bg)
+        self.c_password_again_tips.pack()
+        self.c_password_button = Button(self.change_password_window, image=self.find_password_img, relief="flat", bg=self.default_bg, command=self.saveChangePassword)
+        self.c_password_button.pack(side=TOP)
+        self.login_button.config(state=NORMAL)
+        self.forget_button.config(state=NORMAL)
+        self.register_button.config(state=NORMAL)
+        self.change_button.config(state=NORMAL)
+        if self.osname == "posix":
+            pass
+        else:
+            self.exit_buttom.config(state=NORMAL)
 
     def sendCode(self):
-        get_random = "".join([chr(randint(48, 122)) for i in range(6)])
-        
-        return get_random
+        self.randint_code_var = StringVar()
+        get_random = "".join([chr(randint(48, 57)) for i in range(6)])
+        print(get_random)
+        self.randint_code_var.set(get_random)
 
-    def changePasword(self):
-        resord = FindPassword(self.find_username_var.get(), self.find_mail_var.get())
+    def changeUserInformations(self):
+        self.userdata = {}
+        resord = FindPassword()
+        username_resord = resord.checkUsername(self.find_username_var.get())    # usernmae return resord
+        mail_resord = resord.checkMail(self.find_mail_var.get())    # mail return resord
+        exists_resord = resord.IsDate()
+        if username_resord == None:
+            self.find_username_tips['text'] = ""
+            # self.find_username_tips.config(highlightbackground="black")
+        else:
+            self.find_username_tips['text'] = username_resord
+            # self.find_username_tips.config(highlightbackground="red")
+        if mail_resord == None:
+            self.find_mail_tips['text'] = ""
+            # self.find_mail_tips.config(highlightbackground="black")
+        else:
+            self.find_mail_tips['text'] = mail_resord
+            # self.find_mail_tips.config(highlightbackground="red")
+        if username_resord == None and mail_resord == None:
+            if exists_resord == None:
+                self.code_tips['text'] = ""
+            else:
+                self.code_tips['text'] = exists_resord
+        # self.changePassword()
+        try:
+            # print(self.find_code_var.get(), self.randint_code_var.get())
+            if self.find_code_var.get() == self.randint_code_var.get():
+                self.code_tips['text'] = ""
+                self.userdata['username'] = self.find_username_var.get()
+                self.userdata['mail'] = self.find_mail_var.get()
+                self.changePassword()
+            else:
+                self.code_tips['text'] = "code error"
+        except AttributeError:
+            self.code_tips['text'] = "no code"
 
     def forgetPasswordCommand(self):
         self.find_username_img = PhotoImage(file="images/find_username.png")
@@ -432,18 +543,27 @@ class MainSystem():
         self.find_code_var = StringVar()
         self.find_username_entry = Entry(right_frame, textvariable=self.find_username_var, font=("Aiarl", 15), relief="solid", bg=self.default_bg, highlightbackground=self.default_bg, width=15)
         self.find_username_entry.pack(pady=5)
-        self.find_username_tips = Label(right_frame, text="ap", font=("Aiarl", 10), bg=self.default_bg)
+        self.find_username_tips = Label(right_frame, font=("Aiarl", 10), bg=self.default_bg)
         self.find_username_tips.pack()
         self.find_mail_entry = Entry(right_frame, textvariable=self.find_mail_var, font=("Aiarl", 15), relief="solid", bg=self.default_bg, highlightbackground=self.default_bg, width=15)
         self.find_mail_entry.pack(pady=10)
-        self.find_mail_tips = Label(right_frame, text="ap", font=("Aiarl", 10), bg=self.default_bg)
+        self.find_mail_tips = Label(right_frame, font=("Aiarl", 10), bg=self.default_bg)
         self.find_mail_tips.pack()
         self.find_code_entry = Entry(right_frame, textvariable=self.find_code_var, font=("Aiarl", 15), relief="solid", bg=self.default_bg, highlightbackground=self.default_bg, width=6)
         self.find_code_entry.pack(anchor=W ,pady=5)
         self.find_get_code_button = Button(right_frame, text="验证码", bg=self.default_bg, relief="flat", width=5, command=self.sendCode)
-        self.find_get_code_button.place(x=90,y=120)
-        self.find_button = Button(self.forget_window, image=self.find_password_img, relief="flat", bg=self.default_bg, command=self.changePasword)
-        self.find_button.pack(side=BOTTOM, pady=15)
+        if self.osname == "posix":
+            self.find_get_code_button.place(x=100, y=135)
+        else:
+            self.find_get_code_button.place(x=90,y=120)
+        self.code_tips = Label(self.forget_window, font=("Aiarl", 10), bg=self.default_bg,)
+        self.find_button = Button(self.forget_window, image=self.find_password_img, relief="flat", bg=self.default_bg, command=self.changeUserInformations)
+        if self.osname == "posix":
+            self.code_tips.place(x=50,y=185)
+            self.find_button.pack(side=BOTTOM, pady=5)
+        else:
+            self.code_tips.pack(side=TOP)
+            self.find_button.pack(side=BOTTOM, pady=5)
         self.forget_window.protocol("WM_DELETE_WINDOW", self.normarlAllButton)
 
     def forgetPassword(self):
