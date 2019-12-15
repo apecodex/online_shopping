@@ -161,12 +161,12 @@ class AdminSQL():
                 self.user_db_connect.commit()
                 # self.user_db_connect.close()
 
-    def searchFindPassword(self, username, mail):
+    def searchFindPassword(self, username):
         isdb = """
-            SELECT username, mail FROM user_data WHERE username='{}' and mail='{}'
-        """.format(username, mail)
+            SELECT mail FROM user_data WHERE username='{}'
+        """.format(username)
         try:
-            data = [i for i in self.user_db_cursor.execute(isdb)][0]
+            data = [i for i in self.user_db_cursor.execute(isdb)][0][0]
         except IndexError:
             return None
         return data
@@ -185,8 +185,8 @@ try:
 except FileNotFoundError:
     pass
 
-a = AdminSQL()
+# a = AdminSQL()
 # print(a.searchAloneUsernameDB("apecode"))
-# print(a.searchFindPassword("apecode", "147@qq.com"))
+# print(a.searchFindPassword("apecode"))
 # print(a.searchAloneMailDB("147@qq.com"))
 # print(a.updateUserPasswordDB("abc123", "14@qq.com", " apecode"))
