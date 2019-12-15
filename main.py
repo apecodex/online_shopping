@@ -11,7 +11,6 @@ import os
 import time
 
 class_sql = sql.AdminSQL() # 实例化
-times2 = 300 # 倒计时
 
 class LoginMain():
 
@@ -56,8 +55,8 @@ class RegisterMain():
         self.password = password
         self.enter_password = enter_password
         self.mail = mail
-        self.re_username = re.compile(r'^[a-zA-Z]+[a-zA-Z0-9]+$')  # 输入的格式只能包含字母和数字,且字母开头
-        self.re_password = re.compile(r'^[0-9a-zA-Z]+[0-9a-zA-Z!@#$%^&*()_+>}<{;\'\]\[\\|]+$')  # 匹配所有
+        self.re_username = re.compile(r'^\w{6,}$')  # 输入的格式只能包含字母和数字,且字母开头
+        self.re_password = re.compile(r'^(?!(?:[^a-zA-Z]+|\D+|[a-zA-Z0-9]+)$).{6,}$')  # 匹配所有
         self.re_mail = re.compile(r'^[0-9a-zA-Z_]{0,19}@[0-9a-zA-Z]{1,13}\.[com,cn,net]{1,3}')  # 匹配邮箱
         self.db = {}
 
@@ -67,7 +66,7 @@ class RegisterMain():
         elif len(self.username) < 6 or len(self.username) > 15:
             return "太长或太短,请输入6-15个字"
         elif self.re_username.findall(self.username) == [] or len(self.username) != len("".join(self.username.split())):
-            return "格式有误,包含字母、数字或特殊字符"
+            return "格式有误,包含字母、数字"
         elif class_sql.searchAloneUsernameDB(self.username) != None:
             return "用户名已存在!"
         else:
@@ -96,7 +95,7 @@ class RegisterMain():
         elif len(self.password) < 6:
             return "密码太弱，请输入6位数以上"
         elif self.re_password.findall(self.password) == []:  # 如果为空说明匹配失败，输入不符合要求
-            return "格式有误,需包含字母、数字或特殊符号"
+            return "字母、数字或特殊符号"
         else:
             return None
 
@@ -123,7 +122,7 @@ class RegisterMain():
 class FindPassword():
 
     def __init__(self):
-        self.re_password = re.compile(r'^[0-9a-zA-Z]+[0-9a-zA-Z!@#$%^&*()_+>}<{;\'\]\[\\|]+$')  # 匹配所有
+        self.re_password = re.compile(r'^(?!(?:[^a-zA-Z]+|\D+|[a-zA-Z0-9]+)$).{6,}$')  # 匹配所有
         self.re_mail = re.compile(r'^[0-9a-zA-Z_]{0,19}@[0-9a-zA-Z]{1,13}\.[com,cn,net]{1,3}')  # 匹配邮箱
         self.db = {}
 
@@ -148,16 +147,10 @@ class FindPassword():
             return "此邮箱不存在!"
     
     # 用户名和邮箱地址是否是绑定正确
-    def IsDate(self):
-        if self.db == {} or len(self.db) != 2:
-            pass
-        else:
-            username, mail = self.db['username'], self.db['mail']
-            record = class_sql.searchFindPassword(username, mail)
-            if record != None:
-                return None
-            else:
-                return "用户名或邮箱有误!"
+    def IsDate(self, username):
+        record = class_sql.searchFindPassword(username)
+        if record != None:
+            return None, record
 
     def checkExists(self, password):
         if password.strip() == "":
@@ -328,15 +321,14 @@ class MainSystem():
             self.tips_re_mail['text'] = mail_record
             self.register_mail_entry.config(highlightbackground="red")
         # 保存数据
-        if len(class_register.db) == 5:
+        if len(class_register.db) == 5 and username_record == None and age_record == None and password_record == None and enter_password_record == None and mail_record == None:
             save = register.RegisterSystem(class_register.db)
             record = save.save()
             if record == None:
                 self.register_window.wm_attributes("-topmost", 0)
                 tips = messagebox.showinfo("提示", "注册成功!欢迎您 \"{}\"".format(class_register.db['username']))
-                if tips == True:
-                    self.register_window.wm_attributes("-topmost", 1)
-                    self.register_enter_button.config(state=DISABLED)    # 屏蔽提交按钮
+                self.register_window.wm_attributes("-topmost", 1)
+                self.register_enter_button.config(state=DISABLED)    # 屏蔽提交按钮
 
     def registerCommand(self):
         try:
@@ -422,7 +414,9 @@ class MainSystem():
             self.c_password_again_tips['text'] = record2
         if record1 == None and record2 == None:
             if self.change_password_var.get() == self.change_password_entry_var.get():
-                self.userdata['password'] = self.change_password_entry_var.get()
+                self.userdata['password'] = self.change_password_entry_var.get() # register.HashMd5(self.userdata['username'], self.change_password_entry_var.get())
+                # class_sql.updateUserPasswordDB(self.userdata['username'], self.userdata['mail'], self.userdata['password'])
+                # print("修改成功!")
                 print(self.userdata)
             else:
                 self.c_password_again_tips['text'] = "两次密码不相同!"
@@ -441,13 +435,19 @@ class MainSystem():
         change_password_frame = Frame(self.change_password_window, bg=self.default_bg)
         change_password_frame.pack(side=TOP)
         change_password_left_frame = Frame(change_password_frame, bg=self.default_bg)
-        change_password_left_frame.pack(side=LEFT, anchor=N, pady=10)
+        if self.osname == "posix":
+            change_password_left_frame.pack(side=LEFT, anchor=N, pady=10)
+        else:
+            change_password_left_frame.pack(side=LEFT, anchor=N, pady=5)
         change_password_right_frame = Frame(change_password_frame, bg=self.default_bg)
         change_password_right_frame.pack(side=TOP, padx=10,pady=10)
         self.c_password_lable = Label(change_password_left_frame, text="密  码", bg=self.default_bg, font=("Aiarl", 12), relief="solid")
         self.c_password_lable.pack(anchor=E, pady=3)
         self.c_password_entry_lable = Label(change_password_left_frame, text="确认密码", bg=self.default_bg, font=("Aiarl", 12), relief="solid")
-        self.c_password_entry_lable.pack(pady=20)
+        if self.osname == "posix":
+            self.c_password_entry_lable.pack(pady=20)
+        else:
+            self.c_password_entry_lable.pack(pady=15)
         self.change_password_var = StringVar()
         self.change_password_entry_var = StringVar()
         self.c_password_entry = Entry(change_password_right_frame,textvariable=self.change_password_var, show="*", font=("Aiarl", 12), relief="solid", width=12, bg=self.default_bg)
@@ -480,36 +480,34 @@ class MainSystem():
         resord = FindPassword()
         username_resord = resord.checkUsername(self.find_username_var.get())    # usernmae return resord
         mail_resord = resord.checkMail(self.find_mail_var.get())    # mail return resord
-        exists_resord = resord.IsDate()
+        exists_resord = resord.IsDate(self.find_username_var.get())
         if username_resord == None:
             self.find_username_tips['text'] = ""
-            # self.find_username_tips.config(highlightbackground="black")
+            self.find_username_tips.config(highlightbackground="black")
         else:
             self.find_username_tips['text'] = username_resord
-            # self.find_username_tips.config(highlightbackground="red")
+            self.find_username_tips.config(highlightbackground="red")
         if mail_resord == None:
             self.find_mail_tips['text'] = ""
-            # self.find_mail_tips.config(highlightbackground="black")
+            self.find_mail_tips.config(highlightbackground="black")
         else:
             self.find_mail_tips['text'] = mail_resord
-            # self.find_mail_tips.config(highlightbackground="red")
+            self.find_mail_tips.config(highlightbackground="red")
         if username_resord == None and mail_resord == None:
-            if exists_resord == None:
+            if exists_resord[0] == None and self.find_mail_var.get() == exists_resord[1]:
                 self.code_tips['text'] = ""
+                try:
+                    if self.find_code_var.get() == self.randint_code_var.get():
+                        self.code_tips['text'] = ""
+                        self.userdata['username'] = self.find_username_var.get()
+                        self.userdata['mail'] = self.find_mail_var.get()
+                        self.changePassword()
+                    else:
+                        self.code_tips['text'] = "验证码错误"
+                except AttributeError:
+                    self.code_tips['text'] = "请输入验证码"
             else:
-                self.code_tips['text'] = exists_resord
-        # self.changePassword()
-        try:
-            # print(self.find_code_var.get(), self.randint_code_var.get())
-            if self.find_code_var.get() == self.randint_code_var.get():
-                self.code_tips['text'] = ""
-                self.userdata['username'] = self.find_username_var.get()
-                self.userdata['mail'] = self.find_mail_var.get()
-                self.changePassword()
-            else:
-                self.code_tips['text'] = "code error"
-        except AttributeError:
-            self.code_tips['text'] = "no code"
+                self.code_tips['text'] = "用户名或邮箱有误"
 
     def forgetPasswordCommand(self):
         self.find_username_img = PhotoImage(file="images/find_username.png")
